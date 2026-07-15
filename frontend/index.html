@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>학교 커뮤니티 - 취약 버전</title>
+  <style>
+    body { font-family: sans-serif; background: #fff3cd; margin: 0; padding: 0; }
+    .warning-banner { background: #ff6b6b; color: white; padding: 15px 30px; text-align: center; font-weight: bold; }
+    .navbar { background: #333; color: white; padding: 15px 30px; }
+    .navbar .logo { font-size: 20px; font-weight: bold; }
+    .main-layout { display: flex; justify-content: center; padding: 40px 20px; }
+    .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 800px; width: 100%; }
+    h2 { color: #333; }
+    input, textarea, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    textarea { height: 80px; resize: none; }
+    button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; }
+    .post-item { border-bottom: 1px solid #eee; padding: 12px 0; }
+    .post-header { display: flex; justify-content: space-between; font-size: 12px; color: #888; }
+    .post-content { margin-top: 5px; color: #444; }
+    .vulnerability-notice { background: #ffe6e6; border: 2px solid #ff6b6b; padding: 15px; margin: 20px 0; border-radius: 4px; color: #c41e3a; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div class="warning-banner">⚠️ 보안 취약점이 의도적으로 포함되어 있습니다. 교육용으로만 사용하세요!</div>
+
+  <div class="navbar">
+    <div class="logo">🏫 학교 커뮤니티 (취약 버전)</div>
+  </div>
+
+  <div class="main-layout">
+    <div class="container">
+      
+      <div class="vulnerability-notice">
+        🔴 주의: 이 버전에는 다음과 같은 보안 취약점이 있습니다:
+        <br>1. SQL Injection
+        <br>2. 평문 비밀번호 저장
+        <br>3. XSS (Cross-Site Scripting)
+        <br>4. 접근 제어 부재
+        <br>5. CORS 제한 없음
+      </div>
+
+      <h2>로그인</h2>
+      <input type="text" id="login-email" placeholder="이메일">
+      <input type="password" id="login-password" placeholder="비밀번호">
+      <button onclick="handleLogin()">로그인 (평문 비밀번호)</button>
+
+      <h2 style="margin-top: 30px;">회원가입</h2>
+      <input type="text" id="reg-email" placeholder="이메일">
+      <input type="password" id="reg-password" placeholder="비밀번호 (해싱 없음)">
+      <input type="text" id="reg-username" placeholder="이름">
+      <input type="text" id="reg-school" placeholder="학교명">
+      <select id="reg-grade">
+        <option value="">학년</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+      </select>
+      <select id="reg-class">
+        <option value="">반</option>
+        <option value="1">1</option><option value="2">2</option>
+      </select>
+      <button onclick="handleRegister()">가입하기</button>
+
+      <h2 style="margin-top: 30px;">게시글 작성</h2>
+      <input type="text" id="post-title" placeholder="제목 (XSS 입력 가능)">
+      <textarea id="post-content" placeholder="내용 (XSS 입력 가능)"></textarea>
+      <input type="text" id="post-username" placeholder="작성자">
+      <button onclick="handleWritePost()">작성하기</button>
+
+      <h2 style="margin-top: 30px;">게시글</h2>
+      <div id="posts-list"></div>
+
+    </div>
+  </div>
+
+  <script>
+    const BACKEND_URL = 'http://localhost:5000/api';
+
+    async function handleLogin() {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      try {
+        const res = await fetch(`${BACKEND_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        alert(data.message);
+      } catch (err) {
+        alert('로그인 실패: ' + err.message);
+      }
+    }
+
+    async function handleRegister() {
+      const email = document.getElementById('reg-email').value;
+      const password = document.getElementById('reg-password').value;
+      const username = document.getElementById('reg-username').value;
+      const school_code = document.getElementById('reg-school').value;
+      const grade = document.getElementById('reg-grade').value;
+      const class_number = document.getElementById('reg-class').value;
+
+      try {
+        const res = await fetch(`${BACKEND_URL}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, username, school_code, grade, class_number })
+        });
+        const data = await res.json();
+        alert(data.message);
+      } catch (err) {
+        alert('가입 실패: ' + err.message);
+      }
+    }
+
+    async function handleWritePost() {
+      const title = document.getElementById('post-title').value;
+      const content = document.getElementById('post-content').value;
+      const username = document.getElementById('post-username').value;
+
+      try {
+        const res = await fetch(`${BACKEND_URL}/posts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, content, username, school_code: 'all', grade: 0, class_number: 0 })
+        });
+        const data = await res.json();
+        alert(data.message);
+        loadPosts();
+      } catch (err) {
+        alert('작성 실패: ' + err.message);
+      }
+    }
+
+    async function loadPosts() {
+      try {
+        const res = await fetch(`${BACKEND_URL}/posts`);
+        const posts = await res.json();
+        
+        const postsList = document.getElementById('posts-list');
+        postsList.innerHTML = posts.map(post => `
+          <div class="post-item">
+            <div class="post-header">
+              <span><strong>${post.title}</strong></span>
+              <span>${post.username} - ${new Date(post.created_at).toLocaleString()}</span>
+            </div>
+            <div class="post-content">${post.content}</div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('게시글 로드 실패:', err);
+      }
+    }
+
+    loadPosts();
+  </script>
+</body>
+</html>
